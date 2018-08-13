@@ -21,7 +21,7 @@ package.check <- lapply(packages, FUN = function(x) {
 })
 
 #-------------------------------------------------------------------------
-# Define UI for application that draws a histogram
+# Define UI using tabs for different topics
 ui <- navbarPage("Compare ASAP",
    
   tabPanel("ASAP Runs to Compare",
@@ -79,7 +79,7 @@ ui <- navbarPage("Compare ASAP",
       sidebarPanel(
         selectInput("Settings",
                     "Input Settings",
-                    choices = list("Phases", "Lambdas"),
+                    choices = list("Phases", "Lambdas", "CVs"),
                     selected = "Phases"),
         radioButtons("settingsoneplot",
                      "Plot",
@@ -97,7 +97,7 @@ ui <- navbarPage("Compare ASAP",
 ) # close navbarPage parens
 
 
-# Define server logic required to draw a histogram
+# Define server logic using reactive data frames
 server <- function(input, output) {
    
    asapnames <- reactive({
@@ -151,23 +151,104 @@ server <- function(input, output) {
      nfiles <- length(asapnames())
      for (i in 1:nfiles){
        asap <- dget(input$myfiles[[i, "datapath"]])
-       phase.names <- names(asap$control.parms$phases)
+       # fleet selectivity blocks
+       fleet.sel.ini <- asap$sel.input.mats$fleet.sel.ini
+       nselblocks <- asap$parms$nselblocks
+       nages <- asap$parms$nages
+       for (iselb in 1:nselblocks){
+         startrow <- (iselb - 1) * (nages + 6) + 1
+         if (asap$fleet.sel.option[iselb] == 1){ # by age
+           selblock <- fleet.sel.ini[startrow:(startrow + nages - 1), ]
+         }
+         if (asap$fleet.sel.option[iselb] == 2){ # single logistic
+           selblock <- fleet.sel.ini[(startrow + nages):(startrow + nages + 1), ]
+         }
+         if (asap$fleet.sel.option[iselb] == 3){ # double logisitc
+           selblock <- fleet.sel.ini[(startrow + nages + 2):(startrow + nages + 5), ]
+         }
+         meanselblock <- apply(selblock, 2, mean, na.rm=TRUE)
+         if (iselb == 1) selblockres <- meanselblock
+         if (iselb > 1) selblockres <- rbind(selblockres, meanselblock)
+       }
+       if (nselblocks > 1) selblockres <- apply(selblockres, 2, mean, na.rm=TRUE)
+       
+       # Phases
+       phase.names <- c(names(asap$control.parms$phases), "Fleet.sel.blocks")
        nphases <- length(phase.names)
        thisdf <- data.frame(Run = rep(asapnames()[i], nphases),
                             Variable = rep("Phases", nphases),
                             Name = phase.names,
-                            Value = as.numeric(asap$control.parms$phases[1:nphases])) %>%
+                            Value = c(as.numeric(unlist(asap$control.parms$phases[1:nphases])),
+                                      as.numeric(selblockres[2]))) %>%
          mutate(Value = replace(Value, Value <= -1, -1))
+       # Lambdas
        lambda.names <- c(names(asap$control.parms$singles[c(1,3,4,6)]),
-                         names(asap$control.parms[c(5,6,8,10,12,14,16)]))
+                         names(asap$control.parms[c(5,6,8,10,12,14,16)]),
+                         "Fleet.sel.blocks")
        lambda.vals <- c(as.numeric(asap$control.parms$singles[c(1,3,4,6)]),
-                        as.numeric(lapply(asap$control.parms[c(5,6,8,10,12,14,16)], mean)))
+                        as.numeric(lapply(asap$control.parms[c(5,6,8,10,12,14,16)], mean)),
+                        selblockres[3])
        nlambdas <- length(lambda.names)
        thisdf2 <- data.frame(Run = rep(asapnames()[i], nlambdas),
                              Variable = rep("Lambdas", nlambdas),
                              Name = lambda.names,
                              Value = lambda.vals)
-       mydf <- rbind(mydf, thisdf, thisdf2)
+       # Coefficients of Variation only for parameters with lambda > 0
+       nfleets <- asap$parms$nfleets
+       cv.names <- paste0("tot.catch.cv.fleet.", 1:nfleets)
+       cv.vals <- apply(asap$control.parms$catch.tot.cv, 2, mean, na.rm=TRUE)
+       if (sum(asap$control.parms$lambda.Discard.tot) > 0){
+         disc.names <- paste0("discard.tot.cv.fleet.", 1:nfleets)
+         disc.vals <- apply(asap$control.parms$discard.tot.cv, 2, mean, na.rm=TRUE)
+         cv.names <- c(cv.names, disc.names)
+         cv.vals <- c(cv.vals, disc.vals)
+       }
+       if (asap$control.parms$singles$lambda.recruit.devs > 0){
+         cv.names <- c(cv.names, "recruit.cv")
+         cv.vals <- c(cv.vals, mean(asap$control.parms$recruit.cv, na.rm=TRUE))
+       }
+       for (isingle in c(1, 4, 6)){
+         if (asap$control.parms$singles[isingle] > 0){
+           cv.names <- c(cv.names, names(asap$control.parms$singles[isingle + 1]))
+           cv.vals <- c(cv.vals, as.numeric(asap$control.parms$singles[isingle + 1]))
+         }
+       }
+       for (ifleet in 1:nfleets){
+         if (asap$control.parms$lambda.Fmult.year1[ifleet] > 0){
+           cv.names <- c(cv.names, paste0("Fmult.year1.cv.fleet.", ifleet))
+           cv.vals <- c(cv.vals, as.numeric(asap$control.parms$Fmult.year1.cv[ifleet]))
+         }
+         if (asap$control.parms$lambda.Fmult.devs[ifleet] > 0){
+           cv.names <- c(cv.names, paste0("Fmult.devs.cv.fleet.", ifleet))
+           cv.vals <- c(cv.vals, as.numeric(asap$control.parms$Fmult.devs.cv[ifleet]))
+         }
+       }
+       for (ind in 1:asap$parms$nindices){
+         if (asap$control.parms$lambda.q.year1[ind] > 0){
+           cv.names <- c(cv.names, paste0("q.year1.cv.index.", ind))
+           cv.vals <- c(cv.vals, as.numeric(asap$control.parms$q.year1.cv[ind]))
+         }
+         if (asap$control.parms$lambda.q.devs[ind] > 0){
+           cv.names <- c(cv.names, paste0("q.devs.cv.index.", ind))
+           cv.vals <- c(cv.vals, as.numeric(asap$control.parms$q.devs.cv[ind]))
+         }
+         cv.names <- c(cv.names, names(asap$index.cv[ind]))
+         cv.vals <- c(cv.vals, mean(asap$index.cv[[ind]], na.rm=TRUE))
+       }
+       if (selblockres[3] > 0){
+         cv.names <- c(cv.names, "Fleet.sel.blocks")
+         cv.vals <- c(cv.vals, selblockres[4])
+       }
+
+       
+       
+       ncvs <- length(cv.names)
+       thisdf3 <- data.frame(Run = rep(asapnames()[i], ncvs),
+                             Variable = rep("CVs", ncvs),
+                             Name = cv.names,
+                             Value = cv.vals)
+       # data frame of input settings
+       mydf <- rbind(mydf, thisdf, thisdf2, thisdf3)
      }
      mydf
    })
@@ -246,6 +327,7 @@ server <- function(input, output) {
      }
      ggplot(filter(settingsdf(), Variable == input$Settings), aes(x=Value, y=Name, color=Run)) +
        geom_point() +
+       expand_limits(x = 0) +
        {if (input$settingsoneplot == "Multipanel Plot") facet_wrap(~Run)} +
        theme_bw()
    })  
