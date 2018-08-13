@@ -92,8 +92,30 @@ ui <- navbarPage("Compare ASAP",
         dataTableOutput("settingsTable")
       )
     )
-  )
+  ),
   
+  tabPanel("Selectivities",
+    sidebarLayout(
+      sidebarPanel(
+        checkboxGroupInput("Selectivity",
+                     "Show Selectivity for",
+                     choiceNames = list("Fleet Blocks", "Indices"),
+                     choiceValues = list("Fleet Blocks", "Indices"),
+                     selected = list("Fleet Blocks", "Indices"),
+                     inline = TRUE),
+        radioButtons("selectivityoneplot",
+                     "Plot",
+                     choices = list("One Plot", "Multipanel Plot"),
+                     selected = "One Plot",
+                     inline = TRUE)
+        ),
+      mainPanel(
+        plotOutput("selectivityPlot"),
+        dataTableOutput("selectivityTable")
+      )
+    )
+  )
+
 ) # close navbarPage parens
 
 
@@ -240,9 +262,6 @@ server <- function(input, output) {
          cv.names <- c(cv.names, "Fleet.sel.blocks")
          cv.vals <- c(cv.vals, selblockres[4])
        }
-
-       
-       
        ncvs <- length(cv.names)
        thisdf3 <- data.frame(Run = rep(asapnames()[i], ncvs),
                              Variable = rep("CVs", ncvs),
@@ -251,6 +270,52 @@ server <- function(input, output) {
        # data frame of input settings
        mydf <- rbind(mydf, thisdf, thisdf2, thisdf3)
      }
+     mydf
+   })
+
+   selectivitydf <- reactive({
+     if (is.null(input$myfiles)){
+       return(NULL)
+     }
+     mydf <- data.frame(Run = character(),
+                        IDcounter = integer(),
+                        Variable = character(),
+                        Name = character(),
+                        Age = integer(),
+                        Value = double() )
+     nfiles <- length(asapnames())
+     IDcount = 0
+     for (i in 1:nfiles){
+       asap <- dget(input$myfiles[[i, "datapath"]])
+       nages <- asap$parms$nages
+       # dummy fleet block selectivity
+       IDcount <- IDcount + 1
+       fleet.sel.df <- data.frame(Run = rep(asapnames()[i], nages),
+                                  IDcounter = rep(IDcount, nages),
+                                  Variable = rep("Fleet Blocks", nages),
+                                  Name = rep("Dummy", nages),
+                                  Age = 1:nages,
+                                  Value = as.numeric(asap$fleet.sel.mats[[1]][1,]))
+       # index selectivities
+       index.sel.df <- mydf
+       nindices <- asap$parms$nindices
+       for (ind in 1:nindices){
+         IDcount <- IDcount + 1
+         start.age <- asap$control.parms$index.sel.start.age[ind]
+         end.age <- asap$control.parms$index.sel.end.age[ind]
+         index.ages <- seq(start.age, end.age)
+         nindex.ages <- length(index.ages)
+         ind.df <- data.frame(Run = rep(asapnames()[i], nindex.ages),
+                              IDcounter = rep(IDcount, nindex.ages),
+                              Variable = rep("Indices", nindex.ages),
+                              Name = rep(paste0("index",ind), nindex.ages),
+                              Age = index.ages,
+                              Value = asap$index.sel[ind, start.age:end.age])
+         index.sel.df <- rbind(index.sel.df, ind.df)
+       }
+       # add to total data frame
+       mydf <- rbind(mydf, fleet.sel.df, index.sel.df)
+     }   
      mydf
    })
    
@@ -335,6 +400,23 @@ server <- function(input, output) {
    
    output$settingsTable <- renderDataTable(filter(settingsdf(), Variable == input$Settings))
 
+   output$selectivityPlot <- renderPlot({
+     if (is.null(input$myfiles)){
+       return(NULL)
+     }
+#     ggplot(filter(selectivitydf(), Variable %in% input$Selectivity), 
+#            aes(x=Age, y=Value, color=Run, group=IDcounter)) +
+       ggplot(selectivitydf(), 
+              aes(x=Age, y=Value, color=Run, group=IDcounter)) +
+       geom_point() +
+       geom_line() +
+       expand_limits(y = 0) +
+       {if (input$selectivtyoneplot == "Multipanel Plot") facet_wrap(~Run)} +
+       theme_bw()
+   })  
+   
+   output$selectivityTable <- renderDataTable(filter(selectivitydf(), Variable %in% input$Selectivity))
+   
 }
 
 # Run the application 
