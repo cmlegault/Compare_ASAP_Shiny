@@ -171,6 +171,7 @@ server <- function(input, output) {
          if (iselb > 1) selblockres <- rbind(selblockres, meanselblock)
        }
        if (nselblocks > 1) selblockres <- apply(selblockres, 2, mean, na.rm=TRUE)
+       # note cannot include index selectivity block information because rdat file does not distinguish which selectivity option is used for each fleet
        
        # Phases
        phase.names <- c(names(asap$control.parms$phases), "Fleet.sel.blocks")
