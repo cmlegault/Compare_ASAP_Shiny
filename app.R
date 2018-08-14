@@ -404,14 +404,12 @@ server <- function(input, output) {
      if (is.null(input$myfiles)){
        return(NULL)
      }
-#     ggplot(filter(selectivitydf(), Variable %in% input$Selectivity), 
-#            aes(x=Age, y=Value, color=Run, group=IDcounter)) +
-       ggplot(selectivitydf(), 
-              aes(x=Age, y=Value, color=Run, group=IDcounter)) +
+     ggplot(filter(selectivitydf(), Variable %in% input$Selectivity), 
+            aes(x=Age, y=Value, color=Run, group=IDcounter)) +
        geom_point() +
        geom_line() +
        expand_limits(y = 0) +
-       {if (input$selectivtyoneplot == "Multipanel Plot") facet_wrap(~Run)} +
+       {if (input$selectivityoneplot == "Multipanel Plot") facet_wrap(~Run)} +
        theme_bw()
    })  
    
