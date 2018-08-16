@@ -288,14 +288,26 @@ server <- function(input, output) {
      for (i in 1:nfiles){
        asap <- dget(input$myfiles[[i, "datapath"]])
        nages <- asap$parms$nages
-       # dummy fleet block selectivity
-       IDcount <- IDcount + 1
-       fleet.sel.df <- data.frame(Run = rep(asapnames()[i], nages),
-                                  IDcounter = rep(IDcount, nages),
-                                  Variable = rep("Fleet Blocks", nages),
-                                  Name = rep("Dummy", nages),
-                                  Age = 1:nages,
-                                  Value = as.numeric(asap$fleet.sel.mats[[1]][1,]))
+       # fleet block selectivities
+       fleet.sel.df <- mydf
+       for (iselb in 1:asap$parms$nselblocks){
+         IDcount <- IDcount + 1
+         gotit <- FALSE
+         for (ifleet in 1:asap$parms$nfleets){
+           for (iyear in 1:asap$parms$nyears){
+             if (asap$fleet.sel.blocks[ifleet, iyear] == iselb){
+               gotit <- TRUE
+               fleet.df <- data.frame(Run = rep(asapnames()[i], nages),
+                                      IDcounter = rep(IDcount, nages),
+                                      Variable = rep("Fleet Blocks", nages),
+                                      Name = rep(paste0("selblock",iselb), nages),
+                                      Age = 1:nages,
+                                      Value = as.numeric(asap$fleet.sel.mats[[ifleet]][iyear,]))
+               fleet.sel.df <- rbind(fleet.sel.df, fleet.df)
+             }
+           }
+         }
+       }
        # index selectivities
        index.sel.df <- mydf
        nindices <- asap$parms$nindices
