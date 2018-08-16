@@ -352,13 +352,14 @@ server <- function(input, output) {
        if (i == 1){
          dmensions <- dmens
        }else{
-         dmensions <- rbind(dmensions, dmens)
+         dmensions <- c(dmensions, dmens)
        }
      }
-     colnames(dmensions) <- c("File", names(asap$parms))
-     dmens.table <- dmensions %>%
+     dim(dmensions) <- c((1 + length(asap$parms)), nfiles)
+     dimnames(dmensions) <- list(c("File", names(asap$parms)), 1:nfiles)
+     dmens.table <- t(dmensions) %>%
        data.frame() %>%
-       select(-navailindices) 
+       select(-navailindices)
      dmens.table
    }, digits = 0)
    
