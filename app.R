@@ -342,11 +342,12 @@ server <- function(input, output) {
      if (is.null(input$myfiles)){
        return(NULL)
      }
-     Component <- c("total","catch.total","discard.total","index.fit.total","catch.age.comp","discards.age.comp","index.age.comp","sel.param.total","index.sel.param.total","q.year1","q.devs","Fmult.year1.total","Fmult.devs.total","N.year1","Recruit.devs","SR.steepness","SR.scaler","Fmult.Max.penalty","F.penalty")
      nfiles <- length(asapnames())
-     lk <- Component
      for (i in 1:nfiles){
        asap <- dget(input$myfiles[[i, "datapath"]])
+       if (i == 1){
+         lk <-  substr(names(asap$like), 4, 999)
+       }
        lk <- cbind(lk, as.numeric(asap$like))
      }
      colnames(lk) <- c("Component",asapnames())
