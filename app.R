@@ -33,7 +33,8 @@ ui <- navbarPage("Compare ASAP",
                   accept=c(".RDAT"))
       ),
       mainPanel(
-        tableOutput("filenames")
+        tableOutput("filenames"),
+        tableOutput("dimensions")
       )
     )
   ),
@@ -335,8 +336,31 @@ server <- function(input, output) {
      if (is.null(input$myfiles)){
        return(NULL)
      }
-     input$myfiles[,1]
+     FileNames <- cbind(1:length(asapnames()), input$myfiles[,1])
+     colnames(FileNames) <- c("File", "File Name")
+     FileNames
    })
+   
+   output$dimensions <- renderTable({
+     if (is.null(input$myfiles)){
+       return(NULL)
+     }
+     nfiles <- length(asapnames())
+     for (i in 1:nfiles){
+       asap <- dget(input$myfiles[[i, "datapath"]])
+       dmens <- c(i, as.numeric(asap$parms))
+       if (i == 1){
+         dmensions <- dmens
+       }else{
+         dmensions <- rbind(dmensions, dmens)
+       }
+     }
+     colnames(dmensions) <- c("File", names(asap$parms))
+     dmens.table <- dmensions %>%
+       data.frame() %>%
+       select(-navailindices) 
+     dmens.table
+   }, digits = 0)
    
    output$lktable <- renderTable({
      if (is.null(input$myfiles)){
