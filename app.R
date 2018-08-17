@@ -45,7 +45,8 @@ ui <- navbarPage("Compare ASAP",
          selectInput("objfxn",
                      "Objective Function Component",
                       choices = list("total","catch.total","discard.total","index.fit.total","catch.age.comp","discards.age.comp","index.age.comp","sel.param.total","index.sel.param.total","q.year1","q.devs","Fmult.year1.total","Fmult.devs.total","N.year1","Recruit.devs","SR.steepness","SR.scaler","Fmult.Max.penalty","F.penalty"),
-                      selected = "total") 
+                      selected = "total"),
+         downloadButton("downloadObjFxn", "Download")
       ),
       mainPanel(
         plotOutput("lkPlot"), 
@@ -66,7 +67,7 @@ ui <- navbarPage("Compare ASAP",
                     choices = list("One Plot", "Multipanel Plot"),
                     selected = "One Plot",
                     inline = TRUE),
-        downloadButton("downloadData", "Download")
+        downloadButton("downloadTimeSeries", "Download")
       ),
       mainPanel(
         plotOutput("timeseriesPlot"),
@@ -86,7 +87,8 @@ ui <- navbarPage("Compare ASAP",
                      "Plot",
                      choices = list("One Plot", "Multipanel Plot"),
                      selected = "One Plot",
-                     inline = TRUE)
+                     inline = TRUE),
+        downloadButton("downloadInputSettings", "Download")
         ),
       mainPanel(
         plotOutput("settingsPlot"),
@@ -108,7 +110,8 @@ ui <- navbarPage("Compare ASAP",
                      "Plot",
                      choices = list("One Plot", "Multipanel Plot"),
                      selected = "One Plot",
-                     inline = TRUE)
+                     inline = TRUE),
+        downloadButton("downloadSelectivities", "Download")
         ),
       mainPanel(
         plotOutput("selectivityPlot"),
@@ -134,6 +137,25 @@ server <- function(input, output) {
        res[i] <- substr(tempnames[i], 1, nchar(tempnames[i]) - 5)
      }
      res
+   })
+   
+   lkdf <- reactive({
+     if (is.null(input$myfiles)){
+       return(NULL)
+     }
+     mydf <- data.frame(Run = character(),
+                        Component = character(),
+                        Value = double())
+     nfiles <- length(asapnames())
+     for (i in 1:nfiles){
+       asap <- dget(input$myfiles[[i, "datapath"]])
+       lknames <- substr(names(asap$like), 4, 999)
+       thisdf <- data.frame(Run = rep(asapnames()[i], length(lknames)),
+                            Component = lknames,
+                            Value = as.numeric(asap$like))
+       mydf <- rbind(mydf, thisdf)
+     }
+     mydf
    })
    
    tsdf <- reactive({
@@ -385,19 +407,7 @@ server <- function(input, output) {
      if (is.null(input$myfiles)){
        return(NULL)
      }
-     nfiles <- length(asapnames())
-     lkdf <- data.frame(Run = character(),
-                        Component = character(),
-                        Value = double())
-     for (i in 1:nfiles){
-       asap <- dget(input$myfiles[[i, "datapath"]])
-       lknames <- substr(names(asap$like), 4, 999)
-       thislkdf <- data.frame(Run = rep(asapnames()[i], length(lknames)),
-                              Component = lknames,
-                              Value = as.numeric(asap$like))
-       lkdf <- rbind(lkdf, thislkdf)
-     }
-     ggplot(filter(lkdf, Component == input$objfxn), aes(x=Run, y=Value, color=Run)) +
+     ggplot(filter(lkdf(), Component == input$objfxn), aes(x=Run, y=Value, color=Run)) +
          geom_point(size=3) +
          theme_bw()
    })
@@ -416,17 +426,6 @@ server <- function(input, output) {
    
    output$timeseriesTable <- renderDataTable(filter(tsdf(), Variable == input$TimeSeries))
    
-# note: if Run App in RStudio window, the filename will not default correctly (known RStudio bug),
-# but if Run App in External browser then filename will show up correctly
-   output$downloadData <- downloadHandler(
-      filename = function() {
-        paste0("ASAP_compare_time_series_data_",Sys.Date(),".csv")
-      },
-     content = function(file) {
-       write.csv(tsdf(), file, row.names = FALSE)
-     }
-   )
-
    output$settingsPlot <- renderPlot({
      if (is.null(input$myfiles)){
        return(NULL)
@@ -454,6 +453,47 @@ server <- function(input, output) {
    })  
    
    output$selectivityTable <- renderDataTable(filter(selectivitydf(), Variable %in% input$Selectivity))
+   
+   ## download buttons ##
+   # note: if Run App in RStudio window, the filename will not default correctly (known RStudio bug),
+   # but if Run App in External browser then filename will show up correctly however it will be
+   # downloaded to directory C:\Users\your.name\AppData\Local\Temp
+   output$downloadObjFxn <- downloadHandler(
+     filename = function() {
+       paste0("ASAP_compare_objective_function_data_",Sys.Date(),".csv")
+     },
+     content = function(file) {
+       write.csv(lkdf(), file, row.names = FALSE)
+     }
+   )
+   
+   output$downloadTimeSeries <- downloadHandler(
+     filename = function() {
+       paste0("ASAP_compare_time_series_data_",Sys.Date(),".csv")
+     },
+     content = function(file) {
+       write.csv(tsdf(), file, row.names = FALSE)
+     }
+   )
+   
+   output$downloadInputSettings <- downloadHandler(
+     filename = function() {
+       paste0("ASAP_compare_input_settings_data_",Sys.Date(),".csv")
+     },
+     content = function(file) {
+       write.csv(settingsdf(), file, row.names = FALSE)
+     }
+   )
+   
+   output$downloadSelectivities <- downloadHandler(
+     filename = function() {
+       paste0("ASAP_compare_selectivities_data_",Sys.Date(),".csv")
+     },
+     content = function(file) {
+       write.csv(selectivitydf(), file, row.names = FALSE)
+     }
+   )
+   
    
 }
 
