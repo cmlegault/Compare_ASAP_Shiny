@@ -24,7 +24,7 @@ package.check <- lapply(packages, FUN = function(x) {
 # Define UI using tabs for different topics
 ui <- navbarPage("Compare ASAP",
    
-  tabPanel("ASAP Runs to Compare",
+  tabPanel("Select Runs",
     sidebarLayout(
       sidebarPanel(
         fileInput("myfiles", 
