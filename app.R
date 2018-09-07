@@ -118,8 +118,31 @@ ui <- navbarPage("Compare ASAP",
         dataTableOutput("selectivityTable")
       )
     )
+  ),
+  
+  tabPanel("Std. Residuals",
+    sidebarLayout(
+      sidebarPanel(
+        checkboxGroupInput("Residuals",
+                     "Show Standardized Residuals for",
+                     choiceNames = list("Catch by Fleet", "Indices"),
+                     choiceValues = list("Catch by Fleet", "Indices"),
+                     selected = list("Catch by Fleet", "Indices"),
+                     inline = TRUE),
+        radioButtons("residualsoneplot",
+                     "Plot",
+                     choices = list("One Plot", "Multipanel Plot"),
+                     selected = "One Plot",
+                     inline = TRUE),
+        downloadButton("downloadResiduals", "Download")
+        ),
+      mainPanel(
+        plotOutput("residualsPlot"),
+        dataTableOutput("residualsTable")
+      )
+    )
   )
-
+  
 ) # close navbarPage parens
 
 
@@ -300,19 +323,20 @@ server <- function(input, output) {
      if (is.null(input$myfiles)){
        return(NULL)
      }
-     mydf <- data.frame(Run = character(),
-                        IDcounter = integer(),
-                        Variable = character(),
-                        Name = character(),
-                        Age = integer(),
-                        Value = double() )
+     emptydf <- data.frame(Run = character(),
+                           IDcounter = integer(),
+                           Variable = character(),
+                           Name = character(),
+                           Age = integer(),
+                           Value = double() )
+     mydf <- emptydf
      nfiles <- length(asapnames())
      IDcount = 0
      for (i in 1:nfiles){
        asap <- dget(input$myfiles[[i, "datapath"]])
        nages <- asap$parms$nages
        # fleet block selectivities
-       fleet.sel.df <- mydf
+       fleet.sel.df <- emptydf
        for (iselb in 1:asap$parms$nselblocks){
          IDcount <- IDcount + 1
          gotit <- FALSE
@@ -334,7 +358,7 @@ server <- function(input, output) {
          }
        }
        # index selectivities
-       index.sel.df <- mydf
+       index.sel.df <- emptydf
        nindices <- asap$parms$nindices
        for (ind in 1:nindices){
          IDcount <- IDcount + 1
@@ -353,6 +377,50 @@ server <- function(input, output) {
        # add to total data frame
        mydf <- rbind(mydf, fleet.sel.df, index.sel.df)
      }   
+     mydf
+   })
+   
+   residualsdf <- reactive({
+     if (is.null(input$myfiles)){
+       return(NULL)
+     }
+     emptydf <- data.frame(Run = character(),
+                           IDcounter = integer(),
+                           Variable = character(),
+                           Name = character(),
+                           Year = integer(),
+                           Value = double() )
+     mydf <- emptydf
+     nfiles <- length(asapnames())
+     for (i in 1:nfiles){
+       asap <- dget(input$myfiles[[i, "datapath"]])
+       nyears <- asap$parms$nyears
+       nfleets <- asap$parms$nfleets
+       years <- seq(asap$parms$styr, asap$parms$endyr)
+       # catch resids by fleet
+       fleet.df <- data.frame(Run = rep(asapnames()[i], nyears * nfleets),
+                              IDcounter = rep(1:nfleets, each = nyears),
+                              Variable = rep("Catch by Fleet", nyears * nfleets),
+                              Name = rep(paste0("Fleet", 1:nfleets), each = nyears),
+                              Year = rep(years, nfleets),
+                              Value = as.numeric(t(asap$catch.std.resid)))
+       # index resids
+       IDcount <- nfleets
+       index.resid.df <- emptydf
+       for (ind in 1:asap$parms$nindices){
+         IDcount <- IDcount + 1
+         nyears.ind <- length(asap$index.year[[ind]])
+         index.df <- data.frame(Run = rep(asapnames()[i], nyears.ind),
+                                IDcounter = rep(IDcount, nyears.ind),
+                                Variable = rep("Indices", nyears.ind),
+                                Name = rep(paste0("index", ind)),
+                                Year = asap$index.year[[ind]],
+                                Value = asap$index.std.resid[[ind]])
+         index.resid.df <- rbind(index.resid.df, index.df)
+       }
+       # add to total data frame
+       mydf <- rbind(mydf, fleet.df, index.resid.df)
+     }
      mydf
    })
    
@@ -453,6 +521,20 @@ server <- function(input, output) {
    })  
    
    output$selectivityTable <- renderDataTable(filter(selectivitydf(), Variable %in% input$Selectivity))
+   
+   output$residualsPlot <- renderPlot({
+     if (is.null(input$myfiles)){
+       return(NULL)
+     }
+     ggplot(filter(residualsdf(), Variable %in% input$Residuals), 
+            aes(x=Year, y=Value, color=Run, group=IDcounter)) +
+       geom_point() +
+       expand_limits(y = 0) +
+       {if (input$residualsoneplot == "Multipanel Plot") facet_wrap(~Run)} +
+       theme_bw()
+   })  
+   
+   output$residualsTable <- renderDataTable(filter(residualsdf(), Variable %in% input$Residuals))
    
    ## download buttons ##
    # note: if Run App in RStudio window, the filename will not default correctly (known RStudio bug),
