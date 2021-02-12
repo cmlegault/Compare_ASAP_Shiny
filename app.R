@@ -11,7 +11,8 @@ packages = c("shiny",       # interactive components
              "shinyBS",     # pop up help boxes
              "ggplot2",     # nice graphics
              "dplyr",       # data handling
-             "tidyr")       # data handling
+             "tidyr",       # data handling
+             "DT")          # data table
 
 package.check <- lapply(packages, FUN = function(x) {
   if (!require(x, character.only = TRUE)) {
@@ -71,8 +72,7 @@ ui <- navbarPage("Compare ASAP",
       ),
       mainPanel(
         plotOutput("timeseriesPlot"),
-        tableOutput("timeseriesTable")
-#        dataTableOutput("timeseriesTable") # dataTable not working, perhaps due to change in how checkboxes function? see https://groups.google.com/g/shiny-discuss/c/ZUMBGGl1sss/m/7sdRQecLBAAJ
+        DT::dataTableOutput("timeseriesTable")
       )
     )
   ),
@@ -93,8 +93,7 @@ ui <- navbarPage("Compare ASAP",
         ),
       mainPanel(
         plotOutput("settingsPlot"),
-        tableOutput("settingsTable")
-#        dataTableOutput("settingsTable")
+        DT::dataTableOutput("settingsTable")
       )
     )
   ),
@@ -117,8 +116,7 @@ ui <- navbarPage("Compare ASAP",
         ),
       mainPanel(
         plotOutput("selectivityPlot"),
-        tableOutput("selectivityTable")
-#        dataTableOutput("selectivityTable")
+        DT::dataTableOutput("selectivityTable")
       )
     )
   ),
@@ -141,8 +139,7 @@ ui <- navbarPage("Compare ASAP",
         ),
       mainPanel(
         plotOutput("residualsPlot"),
-        tableOutput("residualsTable")
-#        dataTableOutput("residualsTable")
+        DT::dataTableOutput("residualsTable")
       )
     )
   )
@@ -496,9 +493,8 @@ server <- function(input, output) {
        theme_bw()
    })
    
-   output$timeseriesTable <- renderTable(filter(tsdf(), Variable == input$TimeSeries))
-   #   output$timeseriesTable <- renderDataTable(filter(tsdf(), Variable == input$TimeSeries))
-   
+   output$timeseriesTable <- DT::renderDataTable(filter(tsdf(), Variable == input$TimeSeries))
+
    output$settingsPlot <- renderPlot({
      if (is.null(input$myfiles)){
        return(NULL)
@@ -510,8 +506,7 @@ server <- function(input, output) {
        theme_bw()
    })  
    
-   output$settingsTable <- renderTable(filter(settingsdf(), Variable == input$Settings))
-#   output$settingsTable <- renderDataTable(filter(settingsdf(), Variable == input$Settings))
+   output$settingsTable <- DT::renderDataTable(filter(settingsdf(), Variable == input$Settings))
    
    output$selectivityPlot <- renderPlot({
      if (is.null(input$myfiles)){
@@ -537,8 +532,7 @@ server <- function(input, output) {
        theme_bw()
    })  
    
-   output$selectivityTable <- renderTable(filter(selectivitydf(), Variable %in% input$Selectivity))
-#   output$selectivityTable <- renderDataTable(filter(selectivitydf(), Variable %in% input$Selectivity))
+   output$selectivityTable <- DT::renderDataTable(filter(selectivitydf(), Variable %in% input$Selectivity))
    
    output$residualsPlot <- renderPlot({
      if (is.null(input$myfiles)){
@@ -552,8 +546,7 @@ server <- function(input, output) {
        theme_bw()
    })  
    
-   output$residualsTable <- renderTable(filter(residualsdf(), Variable %in% input$Residuals))
-#   output$residualsTable <- renderDataTable(filter(residualsdf(), Variable %in% input$Residuals))
+   output$residualsTable <- DT::renderDataTable(filter(residualsdf(), Variable %in% input$Residuals))
    
    ## download buttons ##
    # note: if Run App in RStudio window, the filename will not default correctly (known RStudio bug),
