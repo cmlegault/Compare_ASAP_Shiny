@@ -72,7 +72,7 @@ ui <- navbarPage("Compare ASAP",
       mainPanel(
         plotOutput("timeseriesPlot"),
         tableOutput("timeseriesTable")
-#        dataTableOutput("timeseriesTable") # dataTable not working for unknown reason
+#        dataTableOutput("timeseriesTable") # dataTable not working, perhaps due to change in how checkboxes function? see https://groups.google.com/g/shiny-discuss/c/ZUMBGGl1sss/m/7sdRQecLBAAJ
       )
     )
   ),
