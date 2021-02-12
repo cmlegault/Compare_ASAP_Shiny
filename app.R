@@ -71,7 +71,8 @@ ui <- navbarPage("Compare ASAP",
       ),
       mainPanel(
         plotOutput("timeseriesPlot"),
-        dataTableOutput("timeseriesTable")
+        tableOutput("timeseriesTable")
+#        dataTableOutput("timeseriesTable") # dataTable not working for unknown reason
       )
     )
   ),
@@ -92,7 +93,8 @@ ui <- navbarPage("Compare ASAP",
         ),
       mainPanel(
         plotOutput("settingsPlot"),
-        dataTableOutput("settingsTable")
+        tableOutput("settingsTable")
+#        dataTableOutput("settingsTable")
       )
     )
   ),
@@ -115,7 +117,8 @@ ui <- navbarPage("Compare ASAP",
         ),
       mainPanel(
         plotOutput("selectivityPlot"),
-        dataTableOutput("selectivityTable")
+        tableOutput("selectivityTable")
+#        dataTableOutput("selectivityTable")
       )
     )
   ),
@@ -138,7 +141,8 @@ ui <- navbarPage("Compare ASAP",
         ),
       mainPanel(
         plotOutput("residualsPlot"),
-        dataTableOutput("residualsTable")
+        tableOutput("residualsTable")
+#        dataTableOutput("residualsTable")
       )
     )
   )
@@ -492,7 +496,8 @@ server <- function(input, output) {
        theme_bw()
    })
    
-   output$timeseriesTable <- renderDataTable(filter(tsdf(), Variable == input$TimeSeries))
+   output$timeseriesTable <- renderTable(filter(tsdf(), Variable == input$TimeSeries))
+   #   output$timeseriesTable <- renderDataTable(filter(tsdf(), Variable == input$TimeSeries))
    
    output$settingsPlot <- renderPlot({
      if (is.null(input$myfiles)){
@@ -505,8 +510,9 @@ server <- function(input, output) {
        theme_bw()
    })  
    
-   output$settingsTable <- renderDataTable(filter(settingsdf(), Variable == input$Settings))
-
+   output$settingsTable <- renderTable(filter(settingsdf(), Variable == input$Settings))
+#   output$settingsTable <- renderDataTable(filter(settingsdf(), Variable == input$Settings))
+   
    output$selectivityPlot <- renderPlot({
      if (is.null(input$myfiles)){
        return(NULL)
@@ -531,7 +537,8 @@ server <- function(input, output) {
        theme_bw()
    })  
    
-   output$selectivityTable <- renderDataTable(filter(selectivitydf(), Variable %in% input$Selectivity))
+   output$selectivityTable <- renderTable(filter(selectivitydf(), Variable %in% input$Selectivity))
+#   output$selectivityTable <- renderDataTable(filter(selectivitydf(), Variable %in% input$Selectivity))
    
    output$residualsPlot <- renderPlot({
      if (is.null(input$myfiles)){
@@ -545,7 +552,8 @@ server <- function(input, output) {
        theme_bw()
    })  
    
-   output$residualsTable <- renderDataTable(filter(residualsdf(), Variable %in% input$Residuals))
+   output$residualsTable <- renderTable(filter(residualsdf(), Variable %in% input$Residuals))
+#   output$residualsTable <- renderDataTable(filter(residualsdf(), Variable %in% input$Residuals))
    
    ## download buttons ##
    # note: if Run App in RStudio window, the filename will not default correctly (known RStudio bug),
