@@ -28,7 +28,7 @@ ui <- navbarPage("Compare ASAP",
     sidebarLayout(
       sidebarPanel(
         fileInput("myfiles", 
-                  label = "ASAP .rdat files",
+                  label = "ASAP .rdat files (choose multiple files at once)",
                   multiple = TRUE,
                   accept=c(".RDAT"))
       ),
@@ -511,12 +511,23 @@ server <- function(input, output) {
      if (is.null(input$myfiles)){
        return(NULL)
      }
-     ggplot(filter(selectivitydf(), Variable %in% input$Selectivity), 
+   
+   # Set title of Selectivity plot   
+     if (length(input$Selectivity) == 1 & input$Selectivity == "Fleet Blocks") {
+        titl <- "Fleet selectivities"
+     } else if (length(input$Selectivity) == 1 & input$Selectivity == "Indices") { 
+        titl <- "Index selectivities"
+     } else if (setequal(input$Selectivity, c("Fleet Blocks", "Indices"))) {
+       titl <- "Fleet and Index selectivities"
+     } else titl <- ""
+     
+      ggplot(filter(selectivitydf(), Variable %in% input$Selectivity), 
             aes(x=Age, y=Value, color=Run, group=IDcounter)) +
        geom_point() +
        geom_line() +
        expand_limits(y = 0) +
        {if (input$selectivityoneplot == "Multipanel Plot") facet_wrap(~Run)} +
+       ggtitle(titl) +
        theme_bw()
    })  
    
