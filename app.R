@@ -513,9 +513,9 @@ server <- function(input, output) {
      }
    
    # Set title of Selectivity plot   
-     if (length(input$Selectivity) == 1 & input$Selectivity == "Fleet Blocks") {
+     if (setequal(input$Selectivity, "Fleet Blocks")) {
         titl <- "Fleet selectivities"
-     } else if (length(input$Selectivity) == 1 & input$Selectivity == "Indices") { 
+     } else if (setequal(input$Selectivity, "Indices")) {
         titl <- "Index selectivities"
      } else if (setequal(input$Selectivity, c("Fleet Blocks", "Indices"))) {
        titl <- "Fleet and Index selectivities"
