@@ -142,6 +142,23 @@ ui <- navbarPage("Compare ASAP",
         DT::dataTableOutput("residualsTable")
       )
     )
+  ),
+  
+  tabPanel("Survey q",
+    sidebarLayout(
+      sidebarPanel(
+        radioButtons("qoneplot",
+                     "Plot",
+                     choices = list("One Plot", "By Index Plot"),
+                     selected = "One Plot",
+                     inline = TRUE),
+        downloadButton("downloadSurveyq", "Download")
+      ),
+      mainPanel(
+         plotOutput("surveyqPlot"),
+         DT::dataTableOutput("surveyqTable")
+      )
+    )
   )
   
 ) # close navbarPage parens
@@ -425,6 +442,29 @@ server <- function(input, output) {
      mydf
    })
    
+   qdf <- reactive({
+      if (is.null(input$myfiles)){
+         return(NULL)
+      }
+      mydf <- data.frame(Run = character(),
+                         Variable = character(),
+                         Index = integer(),
+                         Value = double() )
+      nfiles <- length(asapnames())
+      for (i in 1:nfiles){
+         asap <- dget(input$myfiles[[i, "datapath"]])
+         q <- asap$q.indices
+         nq <- length(q)
+         thisdf <- data.frame(Run = rep(asapnames()[i], nq),
+                              Variable = "Survey q",
+                              Index = seq(1, nq),
+                              Value = q)
+         mydf <- rbind(mydf, thisdf)
+      }
+      mydf
+   })
+   
+   
    output$filenames <- renderTable({
      if (is.null(input$myfiles)){
        return(NULL)
@@ -548,6 +588,19 @@ server <- function(input, output) {
    
    output$residualsTable <- DT::renderDataTable(filter(residualsdf(), Variable %in% input$Residuals))
    
+   output$surveyqPlot <- renderPlot({
+      if (is.null(input$myfiles)){
+         return(NULL)
+      }
+      ggplot(qdf(), aes(x=Run, y=Value, color=Run)) +
+         geom_point(size=3) +
+         expand_limits(y = 0) +
+         {if (input$qoneplot == "By Index Plot") facet_wrap(~Index, scales = "free_y")} +
+         theme_bw()
+   })
+
+   output$surveyqTable <- DT::renderDataTable(qdf())
+   
    ## download buttons ##
    # note: if Run App in RStudio window, the filename will not default correctly (known RStudio bug),
    # but if Run App in External browser then filename will show up correctly however it will be
@@ -588,6 +641,14 @@ server <- function(input, output) {
      }
    )
    
+   output$downloadSurveyq <- downloadHandler(
+      filename = function() {
+         paste0("ASAP_compare_survey_q_data_",Sys.Date(),".csv")
+      },
+      content = function(file) {
+         write.csv(qdf(), file, row.names = FALSE)
+      }
+   )
    
 }
 
